@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace expense_tracker.Controllers;
 
 [ApiController]
-[Route("API/[controller]")]
+[Route("api/[controller]")]
 public class TransactionController (ExpenseTrackerContext context)
 {
     private readonly ExpenseTrackerContext _context = context;

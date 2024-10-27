@@ -20,7 +20,7 @@ public class Argon2HasherService
         
     }
 
-    public bool VerifyHash(byte[] hashedPassword, byte[] salt, byte[] inputPassword)
+    public bool VerifyHash(byte[] hashedPassword, byte[] inputPassword,  byte[] salt)
     {
         try
         {
