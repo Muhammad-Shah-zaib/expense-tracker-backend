@@ -1,5 +1,9 @@
-using expense_tracker.Data;
-using Microsoft.EntityFrameworkCore;
+global using expense_tracker.Dtos;
+global using expense_tracker.Data;
+global using expense_tracker.Services;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.AspNetCore.Mvc;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,15 +14,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register the DbContext with dependency injection
+//Adding DIs
+builder.Services.AddScoped<Argon2HasherService>();
+
 builder.Services.AddDbContext<ExpenseTrackerContext>(options =>
 {
-    // connections string is configured in user-secrets, hence you don't need to hard-code it here or in appsettings.json
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
 });
 
 var app = builder.Build();
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
