@@ -1,11 +1,13 @@
 using System.Text;
+using expense_tracker.Configuration;
 using expense_tracker.Dtos.Login;
+using Microsoft.Extensions.Options;
 
 namespace expense_tracker.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class LoginController (ExpenseTrackerContext context, Argon2HasherService argon2HasherService): ControllerBase
+public class LoginController (ExpenseTrackerContext context, Argon2HasherService argon2HasherService,JwtTokenService jwtTokenService): ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<LoginResponseDto>> LoginAsync([FromBody] LoginRequestDto requestDto)
@@ -26,9 +28,13 @@ public class LoginController (ExpenseTrackerContext context, Argon2HasherService
             
             // checking password
             var password = Encoding.UTF8.GetBytes(requestDto.Password);
-            var result = argon2HasherService.VerifyHash(Convert.FromBase64String(user.HashPassword),  password, Convert.FromBase64String(user.HashKey));
-            if (result)
             
+            var result = argon2HasherService.VerifyHash(Convert.FromBase64String(user.HashPassword),  password, Convert.FromBase64String(user.HashKey));
+
+            if (result)
+            {
+                // need ot create a jwt token here
+                var token = jwtTokenService.GenerateJwtToken(user);
                 return Ok(new LoginResponseDto()
                 {
                     StatusCode = 200,
@@ -36,7 +42,10 @@ public class LoginController (ExpenseTrackerContext context, Argon2HasherService
                     Username = user.Username,
                     FirstName = user.FirstName,
                     LastName = user.LastName ?? "",
+                    Token = token,
                 });
+            }
+                
             else
                 return BadRequest(new LoginResponseDto()
                 {
