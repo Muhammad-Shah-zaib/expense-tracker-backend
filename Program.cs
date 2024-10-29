@@ -59,13 +59,26 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
-            RequireExpirationTime = true,   
+            RequireExpirationTime = true,
             ValidIssuer = jwtConfig!.Issuer,
             ValidAudience = jwtConfig!.Audience,
         };
     });
 
 builder.Services.AddAuthorization();
+
+// adding CORS for our frontend
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -76,6 +89,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
