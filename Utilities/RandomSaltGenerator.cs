@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 
 namespace expense_tracker.Utilities;
 
-public class RandomSaltGenerator ()
+public abstract class RandomSaltGenerator ()
 {
     public static string GenerateSalt( int size )
     {

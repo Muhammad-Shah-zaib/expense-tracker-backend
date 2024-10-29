@@ -32,6 +32,8 @@ builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("JwtConfi
 //Adding DIs
 builder.Services.AddScoped<Argon2HasherService>();
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<TransactionService>();
+builder.Services.AddScoped<UserService>();
 
 builder.Services.AddDbContext<ExpenseTrackerContext>(options =>
 {
