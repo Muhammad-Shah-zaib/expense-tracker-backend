@@ -21,6 +21,16 @@ public abstract class ApiResponseHelper
             Errors = [$"User with id #{id} not found"],
         };
     }
+    public static ResponseDto GenerateTransactionNotFoundResponse()
+    {
+        return new ResponseDto()
+        {
+            Success = false,
+            StatusCode = 404,
+            Message = "Transaction not found",
+            Errors = ["Transaction not found"],
+        };
+    }
     public static ResponseDto GenerateTransactionPurposeOrTypeErrorResponse()
     {
         return new ResponseDto()

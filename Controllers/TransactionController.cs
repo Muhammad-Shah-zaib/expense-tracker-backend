@@ -70,11 +70,49 @@ public class TransactionController (ExpenseTrackerContext context, TransactionSe
     }
     
     // Put api/transaction/{id}
+    [HttpPut]
     [Route("{id:int}")]
-    public async Task<IActionResult> Put([FromRoute] int id)
+    public async Task<ActionResult<UpdateTransactionResponseDto>> Put([FromRoute] int id, UpdateTransactionRequestDto transactionDto)
     {
+        // validating transaction
+        var transaction = await transactionService.GetTransactionWithId(id);
+        if (transaction == null)
+        {
+            return NotFound(ApiResponseHelper.GenerateTransactionNotFoundResponse());
+        }
+        
+        // validating purpose types
+        if(!transactionService.ValidateTransactionPurposeAndType(purpose: transactionDto.Purpose,
+            type: transactionDto.Type)) return BadRequest(ApiResponseHelper.GenerateTransactionPurposeOrTypeErrorResponse());
+        
         // updating transaction
-        return Ok();
+        transaction.Amount = transactionDto.Amount;
+        transaction.CardNumber = transactionDto.CardNumber;
+        transaction.Description = transactionDto.Description;
+        transaction.Purpose = transactionDto.Purpose;
+        transaction.Type = transactionDto.Type;
+        transaction.Marked = transactionDto.Marked;
+
+        await context.SaveChangesAsync();
+        return Ok(new UpdateTransactionResponseDto()
+        {
+            StatusCode = 200,
+            Success = true,
+            Message = "updated succedssfully",
+            Errors = [],
+            Transaction = new TransactionDto()
+            {
+                Id = transaction.Id,
+                Amount = transaction.Amount,
+                CardNumber = transaction.CardNumber,
+                Date = transaction.Date,
+                Description = transaction.Description ?? "",
+                Purpose = transaction.Purpose ?? "",
+                UserId = transaction.UserId,
+                Type = transaction.Type,
+                Marked = transaction.Marked
+            }
+        });
     }
     
 }
