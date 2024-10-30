@@ -1,6 +1,5 @@
 namespace expense_tracker.Dtos.Transaction;
 
-public class AddTransactionRequestDto: TransactionDto
+public class AddTransactionRequestDto: BaseTransactionDto
 {
-    // userId can be gotten from route or jwt token
 }

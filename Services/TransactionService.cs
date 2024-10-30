@@ -41,4 +41,17 @@ public class TransactionService (ExpenseTrackerContext context)
             throw;
         }
     }
+
+    public bool ValidateTransactionPurposeAndType(string purpose, string type)
+    {
+        return this.ValidateTransactionPurpose(purpose) && this.ValidateTransactionType(type);
+    }
+    private bool ValidateTransactionPurpose(string purpose)
+    {
+        return Enum.TryParse<PurposeEnum>(purpose, out _);
+    }
+    private bool ValidateTransactionType(string type)
+    {
+        return Enum.TryParse<TypeEnum>(type, out _);
+    }
 }

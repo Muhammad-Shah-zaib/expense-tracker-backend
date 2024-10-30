@@ -21,4 +21,14 @@ public abstract class ApiResponseHelper
             Errors = [$"User with id #{id} not found"],
         };
     }
+    public static ResponseDto GenerateTransactionPurposeOrTypeErrorResponse()
+    {
+        return new ResponseDto()
+        {
+            Success = false,
+            StatusCode = 400,
+            Message = "Invalid transaction purpose or type",
+            Errors = ["Invalid transaction purpose or type"],
+        };
+    }
 }

@@ -1,5 +1,6 @@
 using expense_tracker.Dtos.Transaction;
 using expense_tracker.Utilities;
+using Microsoft.AspNetCore.Server.HttpSys;
 
 namespace expense_tracker.Controllers;
 
@@ -8,17 +9,16 @@ namespace expense_tracker.Controllers;
 public class TransactionController (ExpenseTrackerContext context, TransactionService transactionService, UserService userService): ControllerBase
 {
     
-    // GET api/transaction/{id}
+    // GET api/transaction
     [HttpGet]
-    [Route("{id:int}")]
-    public async Task<ActionResult<FetchTransactionResponseDto>> Get([FromRoute] int id)
+    public async Task<ActionResult<FetchTransactionResponseDto>> Get([FromBody] int userId)
     {
-        var result = await userService.ValidateUserWithId(id);
+        var result = await userService.ValidateUserWithId(userId);
         if (!result)
         {
-            return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(id));
+            return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
         } 
-        var transactions = await context.Transactions.Where(t => t.UserId == id)
+        var transactions = await context.Transactions.Where(t => t.UserId == userId)
             .Select(t => new TransactionDto()
             {
                 Id = t.Id,
@@ -43,12 +43,19 @@ public class TransactionController (ExpenseTrackerContext context, TransactionSe
     
     // POST api/transaction/id
     [HttpPost]
-    public async Task<ActionResult<AddTransactionResponseDto>> AddTransaction(
+    public async Task<ActionResult<AddTransactionResponseDto>> Post(
         [FromBody] AddTransactionRequestDto requestDto)
     {
         // validating the user
         var user = await context.AppUsers.FirstOrDefaultAsync(au => au.Id == requestDto.UserId);
         if (user == null) return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(requestDto.UserId));
+        
+        // validating type & purpose fields
+        var result = transactionService.ValidateTransactionPurposeAndType(purpose:requestDto.Purpose, type:requestDto.Type);
+        if (!result)
+        {
+            return BadRequest(ApiResponseHelper.GenerateTransactionPurposeOrTypeErrorResponse());
+        }
         
         // adding transaction
         var transaction = await transactionService.AddTransactionAsync(requestDto);
@@ -61,4 +68,13 @@ public class TransactionController (ExpenseTrackerContext context, TransactionSe
            Transaction = transaction
         });
     }
+    
+    // Put api/transaction/{id}
+    [Route("{id:int}")]
+    public async Task<IActionResult> Put([FromRoute] int id)
+    {
+        // updating transaction
+        return Ok();
+    }
+    
 }
