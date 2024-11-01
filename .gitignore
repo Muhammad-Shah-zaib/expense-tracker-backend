@@ -3,9 +3,6 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# Data folder
-Data/
-
 # User-specific files
 bin/
 obj/
