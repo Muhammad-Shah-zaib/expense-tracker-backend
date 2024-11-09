@@ -35,7 +35,7 @@ builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<TransactionService>();
 builder.Services.AddScoped<UserService>();
 
-builder.Services.AddDbContext<ExpenseTrackerContext>(options =>
+builder.Services.AddDbContext<ExpensetrackerContext>(options =>
 {
     options.UseNpgsql("Name=ConnectionStrings:DefaultConnection")
         .LogTo(Console.WriteLine, LogLevel.Information);

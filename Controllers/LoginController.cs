@@ -7,7 +7,7 @@ namespace expense_tracker.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class LoginController (ExpenseTrackerContext context, Argon2HasherService argon2HasherService,JwtTokenService jwtTokenService): ControllerBase
+public class LoginController (ExpensetrackerContext context, Argon2HasherService argon2HasherService,JwtTokenService jwtTokenService): ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<LoginResponseDto>> LoginAsync([FromBody] LoginRequestDto requestDto)

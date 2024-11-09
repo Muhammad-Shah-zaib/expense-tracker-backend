@@ -1,25 +1,29 @@
 using expense_tracker.Dtos.Transaction;
 using expense_tracker.Utilities;
-using Microsoft.AspNetCore.Server.HttpSys;
 
 namespace expense_tracker.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TransactionController (ExpenseTrackerContext context, TransactionService transactionService, UserService userService): ControllerBase
+public class TransactionController (ExpensetrackerContext context, TransactionService transactionService, UserService userService): ControllerBase
 {
     
     // GET api/transaction
     [HttpGet]
-    public async Task<ActionResult<FetchTransactionResponseDto>> Get([FromBody] int userId)
+    // GET api/transaction?userId={userId}
+    [HttpGet]
+    public async Task<ActionResult<FetchTransactionResponseDto>> Get([FromQuery] int userId)
     {
-        var result = await userService.ValidateUserWithId(userId);
-        if (!result)
+        var isValidUser = await userService.ValidateUserWithId(userId);
+        if (!isValidUser)
         {
             return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
         } 
-        var transactions = await context.Transactions.Where(t => t.UserId == userId)
-            .Select(t => new TransactionDto()
+
+        var transactions = await context.Transactions
+            .Where(t => t.UserId == userId)
+            .OrderByDescending(t => t.Id)
+            .Select(t => new TransactionDto
             {
                 Id = t.Id,
                 Amount = t.Amount,
@@ -30,13 +34,14 @@ public class TransactionController (ExpenseTrackerContext context, TransactionSe
                 UserId = t.UserId,
                 Type = t.Type,
                 Marked = t.Marked,
-            }).ToListAsync();
-        
-        return Ok(new FetchTransactionResponseDto()
+            })
+            .ToListAsync();
+
+        return Ok(new FetchTransactionResponseDto
         {
             StatusCode = 200,
             Message = "Success",
-            Errors = [],
+            Errors = new List<string>(),
             Transactions = transactions
         });
     }
@@ -115,4 +120,23 @@ public class TransactionController (ExpenseTrackerContext context, TransactionSe
         });
     }
     
+    // patch api/transaction/{id}/mark
+    [HttpPatch]
+    [Route("{id:int}/mark")]
+    public async Task<IActionResult> Patch([FromRoute] int id, [FromBody] int userId) 
+    {
+        var user = await userService.GetUserById(userId);
+        if (user == null) return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
+        
+        // getting and validating transaction
+        var transaction = await context.Transactions.FirstOrDefaultAsync(t => (t.Id == id && t.UserId == userId));
+        if (transaction == null) return NotFound(ApiResponseHelper.GenerateTransactionNotFoundResponse());
+
+        // updating transaction
+        transaction.Marked = true;
+
+        await context.SaveChangesAsync();
+
+        return Ok(ApiResponseHelper.GenerateTransactionMarkedSuccessResponse());
+    }
 }

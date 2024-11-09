@@ -1,8 +1,6 @@
-using expense_tracker.Dtos.User;
-
 namespace expense_tracker.Services;
 
-public class UserService (ExpenseTrackerContext context)
+public class UserService (ExpensetrackerContext context)
 {
     public async Task<bool> ValidateUserWithId(int id)
     {
@@ -14,6 +12,18 @@ public class UserService (ExpenseTrackerContext context)
         catch (Exception e)
         {
             Console.WriteLine(e);
+            throw;
+        }
+    }
+
+    public async Task<AppUser?> GetUserById(int id)
+    {
+        try
+        {
+            return await context.AppUsers.FirstOrDefaultAsync(au => au.Id == id);
+        }catch(Exception ex)
+        {
+            Console.WriteLine(ex);
             throw;
         }
     }

@@ -41,4 +41,15 @@ public abstract class ApiResponseHelper
             Errors = ["Invalid transaction purpose or type"],
         };
     }
+    
+    public static ResponseDto GenerateTransactionMarkedSuccessResponse()
+    {
+        return new ResponseDto()
+        {
+            Success = true,
+            StatusCode = 200,
+            Message = "Transaction has marked successfully",
+            Errors = []
+        };
+    }
 }

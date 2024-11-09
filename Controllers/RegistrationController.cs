@@ -7,7 +7,7 @@ namespace expense_tracker.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class RegistrationController(Argon2HasherService argon2HasherService, ExpenseTrackerContext context)
+    public class RegistrationController(Argon2HasherService argon2HasherService, ExpensetrackerContext context)
         : ControllerBase
     {
         [HttpPost]

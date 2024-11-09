@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace expense_tracker.Data;
 
-public partial class ExpenseTrackerContext : DbContext
+public partial class ExpensetrackerContext : DbContext
 {
-    public ExpenseTrackerContext()
+    public ExpensetrackerContext()
     {
     }
 
-    public ExpenseTrackerContext(DbContextOptions<ExpenseTrackerContext> options)
+    public ExpensetrackerContext(DbContextOptions<ExpensetrackerContext> options)
         : base(options)
     {
     }

@@ -3,7 +3,7 @@ using expense_tracker.Utilities;
 
 namespace expense_tracker.Services;
 
-public class TransactionService (ExpenseTrackerContext context)
+public class TransactionService (ExpensetrackerContext context)
 {
     public async Task<TransactionDto> AddTransactionAsync(AddTransactionRequestDto requestDto)
     {
