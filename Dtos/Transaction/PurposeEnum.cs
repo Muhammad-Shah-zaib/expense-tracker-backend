@@ -11,5 +11,6 @@ public enum PurposeEnum
     DonationCharityZakat,
     Subscription,
     MedicalExpenses,
-    ClothingAndAccessories
+    ClothingAndAccessories,
+    Others
 }

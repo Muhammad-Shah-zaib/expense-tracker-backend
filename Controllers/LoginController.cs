@@ -39,6 +39,7 @@ public class LoginController (ExpensetrackerContext context, Argon2HasherService
                 {
                     StatusCode = 200,
                     Message = "Login successful",
+                    UserId = user.Id,
                     Username = user.Username,
                     FirstName = user.FirstName,
                     LastName = user.LastName ?? "",

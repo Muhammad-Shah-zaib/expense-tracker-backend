@@ -30,6 +30,7 @@ public class JwtTokenService(IOptionsMonitor<JwtConfig> optionsMonitor)
             {
                 new Claim("FirstName", user.FirstName),
                 new Claim("LastName", user.LastName ?? ""),
+                new Claim("userId", user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Sub, user.Username),
                 new Claim(JwtRegisteredClaimNames.Email, user.Username),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),

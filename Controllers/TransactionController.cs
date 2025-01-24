@@ -8,8 +8,6 @@ namespace expense_tracker.Controllers;
 public class TransactionController (ExpensetrackerContext context, TransactionService transactionService, UserService userService): ControllerBase
 {
     
-    // GET api/transaction
-    [HttpGet]
     // GET api/transaction?userId={userId}
     [HttpGet]
     public async Task<ActionResult<FetchTransactionResponseDto>> Get([FromQuery] int userId)
@@ -35,6 +33,7 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
                 Type = t.Type,
                 Marked = t.Marked,
             })
+            .OrderBy(t => t.Id)
             .ToListAsync();
 
         return Ok(new FetchTransactionResponseDto
@@ -56,11 +55,11 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
         if (user == null) return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(requestDto.UserId));
         
         // validating type & purpose fields
-        var result = transactionService.ValidateTransactionPurposeAndType(purpose:requestDto.Purpose, type:requestDto.Type);
-        if (!result)
-        {
-            return BadRequest(ApiResponseHelper.GenerateTransactionPurposeOrTypeErrorResponse());
-        }
+        // var result = transactionService.ValidateTransactionPurposeAndType(purpose:requestDto.Purpose, type:requestDto.Type);
+        // if (!result)
+        // {
+        //     return BadRequest(ApiResponseHelper.GenerateTransactionPurposeOrTypeErrorResponse());
+        // }
         
         // adding transaction
         var transaction = await transactionService.AddTransactionAsync(requestDto);
@@ -123,7 +122,7 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
     // patch api/transaction/{id}/mark
     [HttpPatch]
     [Route("{id:int}/mark")]
-    public async Task<IActionResult> Patch([FromRoute] int id, [FromBody] int userId) 
+    public async Task<IActionResult> Patch([FromRoute] int id, [FromQuery] int userId) 
     {
         var user = await userService.GetUserById(userId);
         if (user == null) return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));

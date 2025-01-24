@@ -87,7 +87,6 @@ public partial class ExpensetrackerContext : DbContext
                 .HasColumnName("card_number");
             entity.Property(e => e.Date)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("date");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.Marked)
