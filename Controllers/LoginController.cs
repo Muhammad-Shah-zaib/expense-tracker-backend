@@ -1,7 +1,5 @@
 using System.Text;
-using expense_tracker.Configuration;
 using expense_tracker.Dtos.Login;
-using Microsoft.Extensions.Options;
 
 namespace expense_tracker.Controllers;
 

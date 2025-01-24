@@ -26,14 +26,14 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
                 Id = t.Id,
                 Amount = t.Amount,
                 CardNumber = t.CardNumber,
-                Date = t.Date,
+                Date = t.Date, // Format the Date here
                 Description = t.Description ?? "",
                 Purpose = t.Purpose ?? "",
                 UserId = t.UserId,
                 Type = t.Type,
                 Marked = t.Marked,
             })
-            .OrderBy(t => t.Id)
+            .OrderByDescending(t => t.Date)
             .ToListAsync();
 
         return Ok(new FetchTransactionResponseDto
