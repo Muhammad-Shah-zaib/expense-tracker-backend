@@ -203,4 +203,50 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
         }
     }
 
+
+    [HttpGet]
+    [Route("category-wise-summary/{userId:int}")]
+    public async Task<IActionResult> GetCategoryWiseSummary([FromRoute] int userId)
+    {
+        try
+        {
+            // Check if the user exists
+            var userExists = await _context.AppUsers.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+            {
+                return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
+            }
+
+            // Get the last month's start and end dates
+            var today = DateTime.UtcNow;
+            var lastMonthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1);
+            var lastMonthEnd = new DateTime(today.Year, today.Month, 1, 23, 59, 59, DateTimeKind.Utc);
+
+            var transactions = await _context.Transactions
+                .Where(t => t.UserId == userId && t.Date >= lastMonthStart && t.Date < lastMonthEnd)
+                .GroupBy(t => t.Purpose)
+                .Select(g => new CategorySummaryDto
+                {
+                    Category = g.Key,
+                    TotalAmount = Math.Round(g.Sum(t => t.Amount), 2)
+                })
+                .ToListAsync();
+
+            // Response
+            return Ok(new CategoryWiseSummaryResponseDto
+            {
+                Success = true,
+                StatusCode = 200,
+                Message = "Category-wise transaction summary for last month fetched successfully",
+                Errors = [],
+                Data = transactions
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return StatusCode(500, "Something went wrong while fetching category-wise transaction summary.");
+        }
+    }
+
 }
