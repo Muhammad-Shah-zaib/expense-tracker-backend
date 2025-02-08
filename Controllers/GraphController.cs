@@ -227,7 +227,7 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
                 .GroupBy(t => t.Purpose)
                 .Select(g => new CategorySummaryDto
                 {
-                    Category = g.Key,
+                    Category = g.Key ?? "",
                     TotalAmount = Math.Round(g.Sum(t => t.Amount), 2)
                 })
                 .ToListAsync();
