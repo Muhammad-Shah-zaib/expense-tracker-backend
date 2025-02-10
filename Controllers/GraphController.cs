@@ -9,6 +9,7 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
 {
     private readonly ExpensetrackerContext _context = context;
 
+    // GET: api/graph/weekly-summary/5
     [HttpGet]
     [Route("weekly-summary/{userId:int}")]
     public async Task<IActionResult> GetWeeklyTransactionSummary([FromRoute] int userId)
@@ -67,8 +68,9 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
         }
     }
 
+    // GET: api/graph/last-month-credit-debit-summary/5
     [HttpGet]
-    [Route("{userId:int}")]
+    [Route("last-month-credit-debit-summary/{userId:int}")]
     public async Task<IActionResult> GetMonthlyTransactionSummary([FromRoute] int userId)
     {
         try
@@ -129,6 +131,121 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
         {
             Console.WriteLine(ex.Message);
             return StatusCode(500, "Something went wrong");
+        }
+    }
+
+
+    // GET: api/graph/previous-5-month-summary/5
+    [HttpGet]
+    [Route("previous-5-month-summary/{userId:int}")]
+    public async Task<IActionResult> GetPreviousFiveMonthSummary([FromRoute] int userId)
+    {
+        try
+        {
+            // Check if the user exists
+            var userExists = await _context.AppUsers.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+            {
+                return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
+            }
+
+            // Get the last 5 months (excluding current month)
+            var today = DateTime.UtcNow;
+            var startMonth = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5); // Start of 5 months ago
+            var endMonth = new DateTime(today.Year, today.Month, 1, 23, 59, 59, DateTimeKind.Utc); // Start of current month
+
+            var transactions = await _context.Transactions
+                .Where(t => t.UserId == userId && t.Date >= startMonth && t.Date < endMonth)
+                .GroupBy(t => new { Year = t.Date.Year, Month = t.Date.Month })
+                .Select(g => new
+                {
+                    Year = g.Key.Year,
+                    Month = g.Key.Month,
+                    CreditSum = Math.Round(g.Where(t => t.Type.ToUpper() == "CREDIT").Sum(t => t.Amount), 2),
+                    DebitSum = Math.Round(g.Where(t => t.Type.ToUpper() == "DEBIT").Sum(t => t.Amount), 2)
+                })
+                .OrderBy(g => g.Year).ThenBy(g => g.Month)
+                .ToListAsync();
+
+
+            // Initialize response arrays
+            double[] creditData = new double[5];
+            double[] debitData = new double[5];
+            string[] prev5MonthNames = new string[5];
+
+            // Populate response arrays
+            for (int i = 0; i < 5; i++)
+            {
+                var monthDate = startMonth.AddMonths(i);
+                prev5MonthNames[i] = monthDate.ToString("MMMM yyyy"); // Example: "September 2024"
+
+                var transactionMonth = transactions.FirstOrDefault(t => t.Year == monthDate.Year && t.Month == monthDate.Month);
+                creditData[i] = transactionMonth?.CreditSum ?? 0;
+                debitData[i] = transactionMonth?.DebitSum ?? 0;
+            }
+
+            // Response
+            return Ok(new PreviousFiveMonthSummaryResponseDto
+            {
+                Success = true,
+                StatusCode = 200,
+                Message = "Previous 5-month transaction summary fetched successfully",
+                Errors = [],
+                CreditData = creditData,
+                DebitData = debitData,
+                Prev5MonthNames = prev5MonthNames
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return StatusCode(500, "Something went wrong while fetching transaction summary.");
+        }
+    }
+
+
+    [HttpGet]
+    [Route("category-wise-summary/{userId:int}")]
+    public async Task<IActionResult> GetCategoryWiseSummary([FromRoute] int userId)
+    {
+        try
+        {
+            // Check if the user exists
+            var userExists = await _context.AppUsers.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+            {
+                return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
+            }
+
+            // Get the last month's start and end dates
+            var today = DateTime.UtcNow;
+            var lastMonthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-1);
+            var lastMonthEnd = new DateTime(today.Year, today.Month, 1, 23, 59, 59, DateTimeKind.Utc);
+
+            var transactions = await _context.Transactions
+                .Where(t => t.UserId == userId && t.Date >= lastMonthStart && t.Date < lastMonthEnd)
+                .GroupBy(t => t.Purpose)
+                .Select(g => new CategorySummaryDto
+                {
+                    Category = g.Key ?? "",
+                    TotalAmount = Math.Round(g.Sum(t => t.Amount), 2)
+                })
+                .ToListAsync();
+
+            // Response
+            return Ok(new CategoryWiseSummaryResponseDto
+            {
+                Success = true,
+                StatusCode = 200,
+                Message = "Category-wise transaction summary for last month fetched successfully",
+                Errors = [],
+                Data = transactions
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return StatusCode(500, "Something went wrong while fetching category-wise transaction summary.");
         }
     }
 
