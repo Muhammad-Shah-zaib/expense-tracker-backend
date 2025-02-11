@@ -1,3 +1,4 @@
+using System.Globalization;
 using expense_tracker.Dtos.Graph;
 using expense_tracker.Utilities;
 
@@ -246,6 +247,115 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
         {
             Console.WriteLine(ex.Message);
             return StatusCode(500, "Something went wrong while fetching category-wise transaction summary.");
+        }
+    }
+
+
+    [HttpGet]
+    [Route("summary/{userId:int}")]
+    public async Task<IActionResult> GetTransactionSummary(
+    [FromRoute] int userId,
+    [FromQuery] DateTime startDate,
+    [FromQuery] DateTime endDate,
+    [FromQuery] string interval) // "day", "week", "month"
+    {
+        // Ensure dates are UTC
+        startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+        endDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+        try
+        {
+            // Validate if the user exists
+            var userExists = await _context.AppUsers.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+            {
+                return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
+            }
+
+            // Fetch transactions within the given date range
+            var transactions = await _context.Transactions
+                .Where(t => t.UserId == userId && t.Date >= startDate && t.Date <= endDate)
+                .ToListAsync();
+
+            if (transactions.Count == 0)
+            {
+                return Ok(new { Success = true, Message = "No transactions found in the given date range." });
+            }
+
+            List<double> creditData = new List<double>();
+            List<double> debitData = new List<double>();
+            List<string> yAxisLabels = new List<string>();
+
+            switch (interval.ToLower())
+            {
+                case "day":
+                    var dailyData = transactions.GroupBy(t => t.Date.Date)
+                        .Select(g => new
+                        {
+                            Date = g.Key,
+                            CreditSum = g.Where(t => t.Type == "credit").Sum(t => t.Amount),
+                            DebitSum = g.Where(t => t.Type == "debit").Sum(t => t.Amount)
+                        }).OrderBy(g => g.Date).ToList();
+
+                    foreach (var entry in dailyData)
+                    {
+                        creditData.Add(entry.CreditSum);
+                        debitData.Add(entry.DebitSum);
+                        yAxisLabels.Add(entry.Date.ToString("yyyy-MM-dd"));
+                    }
+                    break;
+
+                case "week":
+                    var weekStart = startDate;
+                    while (weekStart <= endDate)
+                    {
+                        var weekEnd = weekStart.AddDays(6 - (int)weekStart.DayOfWeek);
+                        if (weekEnd > endDate) weekEnd = endDate;
+
+                        var weekData = transactions.Where(t => t.Date >= weekStart && t.Date <= weekEnd);
+                        creditData.Add(weekData.Where(t => t.Type == "credit").Sum(t => t.Amount));
+                        debitData.Add(weekData.Where(t => t.Type == "debit").Sum(t => t.Amount));
+                        yAxisLabels.Add($"Week {CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(weekStart, CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday)}");
+
+                        weekStart = weekEnd.AddDays(1);
+                    }
+                    break;
+
+                case "month":
+                    var monthlyData = transactions.GroupBy(t => new { t.Date.Year, t.Date.Month })
+                        .Select(g => new
+                        {
+                            Year = g.Key.Year,
+                            Month = g.Key.Month,
+                            CreditSum = g.Where(t => t.Type == "credit").Sum(t => t.Amount),
+                            DebitSum = g.Where(t => t.Type == "debit").Sum(t => t.Amount)
+                        }).OrderBy(g => g.Year).ThenBy(g => g.Month).ToList();
+
+                    foreach (var entry in monthlyData)
+                    {
+                        creditData.Add(entry.CreditSum);
+                        debitData.Add(entry.DebitSum);
+                        yAxisLabels.Add(new DateTime(entry.Year, entry.Month, 1).ToString("MMMM yyyy"));
+                    }
+                    break;
+
+                default:
+                    return BadRequest(new { Success = false, Message = "Invalid interval. Use 'day', 'week', or 'month'." });
+            }
+
+            return Ok(new
+            {
+                Success = true,
+                StatusCode = 200,
+                Message = "Transaction summary fetched successfully",
+                CreditData = creditData,
+                DebitData = debitData,
+                YAxisLabels = yAxisLabels
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return StatusCode(500, "Something went wrong while fetching transaction summary.");
         }
     }
 
