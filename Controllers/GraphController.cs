@@ -224,7 +224,7 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
             var lastMonthEnd = new DateTime(today.Year, today.Month, 1, 23, 59, 59, DateTimeKind.Utc);
 
             var transactions = await _context.Transactions
-                .Where(t => t.UserId == userId && t.Date >= lastMonthStart && t.Date < lastMonthEnd)
+                .Where(t => t.Type == "credit" && t.UserId == userId && t.Date >= lastMonthStart && t.Date < lastMonthEnd)
                 .GroupBy(t => t.Purpose)
                 .Select(g => new CategorySummaryDto
                 {
@@ -305,20 +305,29 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
                     break;
 
                 case "week":
-                    var weekStart = startDate;
-                    while (weekStart <= endDate)
+                    var weeklyData = transactions.GroupBy(t =>
+                        CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(
+                            t.Date,
+                            CalendarWeekRule.FirstFourDayWeek,
+                            DayOfWeek.Monday)
+                        )
+                        .Select(g => new
+                        {
+                            WeekNumber = g.Key,
+                            CreditSum = g.Where(t => t.Type == "credit").Sum(t => t.Amount),
+                            DebitSum = g.Where(t => t.Type == "debit").Sum(t => t.Amount)
+                        })
+                        .OrderBy(g => g.WeekNumber)
+                        .ToList();
+
+                    foreach (var entry in weeklyData)
                     {
-                        var weekEnd = weekStart.AddDays(6 - (int)weekStart.DayOfWeek);
-                        if (weekEnd > endDate) weekEnd = endDate;
-
-                        var weekData = transactions.Where(t => t.Date >= weekStart && t.Date <= weekEnd);
-                        creditData.Add(weekData.Where(t => t.Type == "credit").Sum(t => t.Amount));
-                        debitData.Add(weekData.Where(t => t.Type == "debit").Sum(t => t.Amount));
-                        yAxisLabels.Add($"Week {CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(weekStart, CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday)}");
-
-                        weekStart = weekEnd.AddDays(1);
+                        creditData.Add(entry.CreditSum);
+                        debitData.Add(entry.DebitSum);
+                        yAxisLabels.Add($"Week {entry.WeekNumber}");
                     }
                     break;
+
 
                 case "month":
                     var monthlyData = transactions.GroupBy(t => new { t.Date.Year, t.Date.Month })
