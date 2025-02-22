@@ -1,3 +1,4 @@
+using System.Globalization;
 using expense_tracker.Dtos.Transaction;
 using expense_tracker.Utilities;
 
@@ -5,9 +6,9 @@ namespace expense_tracker.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TransactionController (ExpensetrackerContext context, TransactionService transactionService, UserService userService): ControllerBase
+public class TransactionController(ExpensetrackerContext context, TransactionService transactionService, UserService userService) : ControllerBase
 {
-    
+
     // GET api/transaction?userId={userId}
     [HttpGet]
     public async Task<ActionResult<FetchTransactionResponseDto>> Get([FromQuery] int userId)
@@ -16,7 +17,7 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
         if (!isValidUser)
         {
             return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
-        } 
+        }
 
         var transactions = await context.Transactions
             .Where(t => t.UserId == userId)
@@ -44,7 +45,7 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
             Transactions = transactions
         });
     }
-    
+
     // POST api/transaction/id
     [HttpPost]
     public async Task<ActionResult<AddTransactionResponseDto>> Post(
@@ -53,26 +54,26 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
         // validating the user
         var user = await context.AppUsers.FirstOrDefaultAsync(au => au.Id == requestDto.UserId);
         if (user == null) return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(requestDto.UserId));
-        
+
         // validating type & purpose fields
         // var result = transactionService.ValidateTransactionPurposeAndType(purpose:requestDto.Purpose, type:requestDto.Type);
         // if (!result)
         // {
         //     return BadRequest(ApiResponseHelper.GenerateTransactionPurposeOrTypeErrorResponse());
         // }
-        
+
         // adding transaction
         var transaction = await transactionService.AddTransactionAsync(requestDto);
 
         return Ok(new AddTransactionResponseDto()
         {
-           StatusCode = 200,
-           Message = "success",
-           Errors = [],
-           Transaction = transaction
+            StatusCode = 200,
+            Message = "success",
+            Errors = [],
+            Transaction = transaction
         });
     }
-    
+
     // Put api/transaction/{id}
     [HttpPut]
     [Route("{id:int}")]
@@ -84,11 +85,11 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
         {
             return NotFound(ApiResponseHelper.GenerateTransactionNotFoundResponse());
         }
-        
+
         // validating purpose types
-        if(!transactionService.ValidateTransactionPurposeAndType(purpose: transactionDto.Purpose,
+        if (!transactionService.ValidateTransactionPurposeAndType(purpose: transactionDto.Purpose,
             type: transactionDto.Type)) return BadRequest(ApiResponseHelper.GenerateTransactionPurposeOrTypeErrorResponse());
-        
+
         // updating transaction
         transaction.Amount = transactionDto.Amount;
         transaction.CardNumber = transactionDto.CardNumber;
@@ -118,15 +119,15 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
             }
         });
     }
-    
+
     // patch api/transaction/{id}/mark
     [HttpPatch]
     [Route("{id:int}/mark")]
-    public async Task<IActionResult> Patch([FromRoute] int id, [FromQuery] int userId) 
+    public async Task<IActionResult> Patch([FromRoute] int id, [FromQuery] int userId)
     {
         var user = await userService.GetUserById(userId);
         if (user == null) return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
-        
+
         // getting and validating transaction
         var transaction = await context.Transactions.FirstOrDefaultAsync(t => (t.Id == id && t.UserId == userId));
         if (transaction == null) return NotFound(ApiResponseHelper.GenerateTransactionNotFoundResponse());
@@ -137,5 +138,65 @@ public class TransactionController (ExpensetrackerContext context, TransactionSe
         await context.SaveChangesAsync();
 
         return Ok(ApiResponseHelper.GenerateTransactionMarkedSuccessResponse());
+    }
+
+    [HttpGet]
+    [Route("summary/{userId:int}")]
+    public async Task<IActionResult> GetTransactionSummary(
+       [FromRoute] int userId,
+       [FromQuery] DateTime startDate,
+       [FromQuery] DateTime endDate)
+    {
+        // Ensure dates are in UTC
+        startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+        endDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+        try
+        {
+            // Validate if the user exists
+            var userExists = await context.AppUsers.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+            {
+                return NotFound(new { Success = false, StatusCode = 404, Message = $"User with ID {userId} not found." });
+            }
+
+            // Fetch transactions in the given date range
+            var transactions = await context.Transactions
+                .Where(t => t.UserId == userId && t.Date >= startDate && t.Date <= endDate)
+                .ToListAsync();
+
+            if (transactions.Count == 0)
+            {
+                return Ok(new TransactionSummaryResponseDto());
+            }
+
+            // Group and map transactions
+            var dayWiseTransactions = transactions
+                .GroupBy(t => t.Date.Date)
+                .SelectMany(g => g.Select(t => new TransactionDto
+                {
+                    Id = t.Id,
+                    Type = t.Type,
+                    Date = t.Date,
+                    Description = t.Description ?? string.Empty,
+                    CardNumber = t.CardNumber,
+                    Purpose = t.Purpose ?? string.Empty,
+                    UserId = t.UserId,
+                    Amount = t.Amount,
+                    Marked = t.Marked
+                })).ToList();
+
+            var response = new TransactionSummaryResponseDto
+            {
+                DayWiseTransactions = dayWiseTransactions,
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            return StatusCode(500, new { Success = false, StatusCode = 500, Message = "An internal server error occurred while fetching the transaction summary." });
+        }
     }
 }
