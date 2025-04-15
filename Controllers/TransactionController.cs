@@ -1,4 +1,3 @@
-using System.Globalization;
 using expense_tracker.Dtos.Transaction;
 using expense_tracker.Utilities;
 
@@ -148,7 +147,7 @@ public class TransactionController(ExpensetrackerContext context, TransactionSer
        [FromQuery] DateTime endDate)
     {
         // Ensure dates are in UTC
-        startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+        startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc).AddDays(-1);
         endDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
 
         try
@@ -199,4 +198,103 @@ public class TransactionController(ExpensetrackerContext context, TransactionSer
             return StatusCode(500, new { Success = false, StatusCode = 500, Message = "An internal server error occurred while fetching the transaction summary." });
         }
     }
+
+    [HttpGet]
+    [Route("summary-credits/{userId:int}")]
+    public async Task<ActionResult<GetCreditsSummaryResponseDto>> GetCreditsSummary(
+    [FromRoute] int userId,
+    [FromQuery] string creditReportType)
+    {
+        try
+        {
+            // Validate if the user exists
+            var userExists = await context.AppUsers.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+            {
+                return NotFound(new
+                {
+                    Success = false,
+                    StatusCode = 404,
+                    Message = $"User with ID {userId} not found."
+                });
+            }
+
+            // Determine date range based on creditReportType
+            DateTime startDate = DateTime.MinValue;
+            DateTime endDate = DateTime.UtcNow;
+
+            if (creditReportType?.ToLower() == "this-month")
+            {
+                startDate = new DateTime(endDate.Year, endDate.Month, 1).AddDays(-1);
+                startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            }
+
+            // Fetch credits based on the determined date range
+            var creditsQuery = context.Transactions.Where(c => c.UserId == userId && c.Type == "credit");
+
+            if (creditReportType?.ToLower() == "this-month")
+            {
+                creditsQuery = creditsQuery.Where(c => c.Date >= startDate && c.Date <= endDate);
+            }
+
+            var credits = await creditsQuery.ToListAsync();
+
+            if (credits.Count == 0)
+            {
+                return Ok(new GetCreditsSummaryResponseDto
+                {
+                    CreditsAmount = 0,
+                    CreditsCount = 0,
+                    Success = true,
+                    StatusCode = 200,
+                    Message = creditReportType?.ToLower() == "this-month"
+                        ? "No credits found for this month."
+                        : "No credits found."
+                });
+            }
+
+            // Calculate total credits amount
+            int totalCreditsAmount = (int)credits.Sum(c => c.Amount);
+
+            // Prepare the response
+            var response = new
+            {
+                creditsAmount = totalCreditsAmount,
+                creditsCount = credits.Count,
+                Success = true,
+                StatusCode = 200,
+                Message = "Credits summary fetched successfully."
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            return StatusCode(500, new
+            {
+                Success = false,
+                StatusCode = 500,
+                Message = "An internal server error occurred while fetching the credits summary."
+            });
+        }
+    }
+
+    [HttpDelete]
+    [Route("{id:int}")]
+    public async Task<IActionResult> Delete([FromRoute] int id, [FromQuery] int userId)
+    {
+        var user = await userService.GetUserById(userId);
+        if (user == null) return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
+
+        var transaction = await context.Transactions.FirstOrDefaultAsync(t => (t.Id == id && t.UserId == userId));
+        if (transaction == null) return NotFound(ApiResponseHelper.GenerateTransactionNotFoundResponse());
+
+        context.Transactions.Remove(transaction);
+        await context.SaveChangesAsync();
+
+        return Ok(ApiResponseHelper.GenerateTransactionDeletedSuccessResponse(id));
+    }
+
 }
+

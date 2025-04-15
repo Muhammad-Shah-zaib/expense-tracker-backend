@@ -10,7 +10,7 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
 {
     private readonly ExpensetrackerContext _context = context;
 
-    // GET: api/graph/weekly-summary/5
+    // GET: api/graph/weekly-summary/
     [HttpGet]
     [Route("weekly-summary/{userId:int}")]
     public async Task<IActionResult> GetWeeklyTransactionSummary([FromRoute] int userId)

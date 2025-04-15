@@ -12,13 +12,23 @@ public abstract class ApiResponseHelper
                 Message = "User not found",
                 Errors = ["User not found"],
             };
-        
+
         return new ResponseDto()
         {
             Success = true,
             StatusCode = 404,
             Message = "User not found",
             Errors = [$"User with id #{id} not found"],
+        };
+    }
+    public static ResponseDto GenerateTransactionDeletedSuccessResponse(int transactionId)
+    {
+        return new ResponseDto()
+        {
+            Success = true,
+            StatusCode = 200,
+            Message = $"Transaction #{transactionId} has been deleted successfully",
+            Errors = []
         };
     }
     public static ResponseDto GenerateTransactionNotFoundResponse()
@@ -41,7 +51,7 @@ public abstract class ApiResponseHelper
             Errors = ["Invalid transaction purpose or type"],
         };
     }
-    
+
     public static ResponseDto GenerateTransactionMarkedSuccessResponse()
     {
         return new ResponseDto()
