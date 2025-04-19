@@ -69,16 +69,20 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// adding CORS for our frontend
+// Adding CORS for our frontend (both local and production)
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "https://expense-tracker-frontend-beige.vercel.app"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
 });
+
 
 
 var app = builder.Build();
