@@ -99,4 +99,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.MapGet("/ping", () => Results.Ok("Hello from Azure!"));
+
 app.Run();
