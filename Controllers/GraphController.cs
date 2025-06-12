@@ -17,34 +17,33 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
     {
         try
         {
-            // Validate if the user exists
+            // Validate user exists
             var userExists = await _context.AppUsers.AnyAsync(u => u.Id == userId);
             if (!userExists)
             {
                 return NotFound(ApiResponseHelper.GenerateUserNotFoundResponse(userId));
             }
 
-            // Pakistan Standard Time (UTC+5)
+            // Define Pakistan Standard Time (UTC+5)
             var timezoneOffset = TimeSpan.FromHours(5);
 
-            // Get current time in local (Karachi) time
+            // Get local time in Pakistan
             var todayUtc = DateTime.UtcNow;
             var todayLocal = todayUtc + timezoneOffset;
-            var daysSinceSunday = (int)todayLocal.DayOfWeek; // Sunday = 0
-            var currentWeekStartLocal = todayLocal.Date.AddDays(-daysSinceSunday);
+            var startOfWeekLocal = todayLocal.Date.AddDays(-(int)todayLocal.DayOfWeek); // Sunday start
 
-            // Convert local range to UTC for DB query
-            var currentWeekStartUtc = currentWeekStartLocal - timezoneOffset;
-            var todayUtcDate = todayLocal.Date - timezoneOffset;
+            // Define range in UTC for DB query
+            var startOfWeekUtc = startOfWeekLocal - timezoneOffset;
+            var endOfTodayUtc = startOfWeekUtc.AddDays(7 + 1); // Include full week upto saturday
 
-            // Fetch transactions within the week
+            // Fetch this week's transactions
             var transactions = await _context
                 .Transactions.Where(t =>
-                    t.UserId == userId && t.Date >= currentWeekStartUtc && t.Date <= todayUtcDate
+                    t.UserId == userId && t.Date >= startOfWeekUtc && t.Date < endOfTodayUtc
                 )
                 .ToListAsync();
 
-            // Group by local date (Karachi time)
+            // Group by local date
             var grouped = transactions
                 .GroupBy(t => (t.Date + timezoneOffset).Date)
                 .ToDictionary(
@@ -56,17 +55,22 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
                     }
                 );
 
-            var daysInCurrentWeek = daysSinceSunday + 1;
-            var creditData = new double[daysInCurrentWeek];
-            var debitData = new double[daysInCurrentWeek];
+            // Prepare 7-day result arrays
+            var creditData = new double[7];
+            var debitData = new double[7];
 
-            for (int i = 0; i < daysInCurrentWeek; i++)
+            for (int i = 0; i < 7; i++)
             {
-                var localDate = currentWeekStartLocal.AddDays(i);
-                if (grouped.TryGetValue(localDate, out var summary))
+                var currentLocalDate = startOfWeekLocal.AddDays(i);
+                if (grouped.TryGetValue(currentLocalDate, out var summary))
                 {
                     creditData[i] = summary.CreditSum;
                     debitData[i] = summary.DebitSum;
+                }
+                else
+                {
+                    creditData[i] = 0;
+                    debitData[i] = 0;
                 }
             }
 
@@ -84,7 +88,7 @@ public class GraphController(ExpensetrackerContext context) : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine("Error fetching weekly summary: " + ex.Message);
             return StatusCode(500, ApiResponseHelper.GenerateTransactionNotFoundResponse());
         }
     }
